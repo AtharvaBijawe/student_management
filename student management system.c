@@ -1,5 +1,6 @@
 #include <stdio.h>
 #include <string.h>
+#include <ctype.h>  // Added for input validation
 
 // Define student structure
 struct Student {
@@ -12,17 +13,86 @@ struct Student {
 struct Student students[50];
 int studentCount = 0;
 
+// Helper function to clear input buffer
+void clearInputBuffer() {
+    int c;
+    while ((c = getchar()) != '\n' && c != EOF);
+}
+
+// Helper function to find student by roll number (returns index or -1)
+int findStudentByRoll(int rollNo) {
+    for (int i = 0; i < studentCount; i++) {
+        if (students[i].rollNumber == rollNo) {
+            return i;
+        }
+    }
+    return -1;
+}
+
 // Function to add a new student
 void addStudent() {
+    // Check if array is full
+    if (studentCount >= 50) {
+        printf("\nError: Maximum student limit reached (50 students)!\n\n");
+        return;
+    }
+    
     printf("\n--- Add New Student ---\n");
-    printf("Enter Roll Number: ");
-    scanf("%d", &students[studentCount].rollNumber);
     
+    // Input roll number with validation
+    int rollNumber;
+    while (1) {
+        printf("Enter Roll Number: ");
+        if (scanf("%d", &rollNumber) != 1) {
+            printf("Invalid input. Please enter a valid number.\n");
+            clearInputBuffer();
+            continue;
+        }
+        clearInputBuffer();
+        
+        // Check for duplicate roll number
+        if (findStudentByRoll(rollNumber) != -1) {
+            printf("Error: Roll number %d already exists. Please use a different roll number.\n", rollNumber);
+            continue;
+        }
+        
+        if (rollNumber <= 0) {
+            printf("Error: Roll number must be positive.\n");
+            continue;
+        }
+        break;
+    }
+    students[studentCount].rollNumber = rollNumber;
+    
+    // Input name with spaces
     printf("Enter Name: ");
-    scanf("%s", students[studentCount].name);
+    if (fgets(students[studentCount].name, sizeof(students[studentCount].name), stdin) == NULL) {
+        printf("Error reading name.\n");
+        return;
+    }
     
-    printf("Enter Marks: ");
-    scanf("%f", &students[studentCount].marks);
+    // Remove trailing newline if present
+    size_t len = strlen(students[studentCount].name);
+    if (len > 0 && students[studentCount].name[len - 1] == '\n') {
+        students[studentCount].name[len - 1] = '\0';
+    }
+    
+    // Input marks with validation
+    while (1) {
+        printf("Enter Marks (0-100): ");
+        if (scanf("%f", &students[studentCount].marks) != 1) {
+            printf("Invalid input. Please enter a valid number.\n");
+            clearInputBuffer();
+            continue;
+        }
+        clearInputBuffer();
+        
+        if (students[studentCount].marks < 0 || students[studentCount].marks > 100) {
+            printf("Error: Marks must be between 0 and 100.\n");
+            continue;
+        }
+        break;
+    }
     
     studentCount++;
     printf("Student added successfully!\n\n");
@@ -53,15 +123,19 @@ void searchStudent() {
     int rollNo;
     printf("\n--- Search Student ---\n");
     printf("Enter roll number: ");
-    scanf("%d", &rollNo);
+    if (scanf("%d", &rollNo) != 1) {
+        printf("Invalid input.\n\n");
+        clearInputBuffer();
+        return;
+    }
+    clearInputBuffer();
     
-    for (int i = 0; i < studentCount; i++) {
-        if (students[i].rollNumber == rollNo) {
-            printf("Found - Name: %s, Marks: %.2f\n\n", 
-                   students[i].name, 
-                   students[i].marks);
-            return;
-        }
+    int index = findStudentByRoll(rollNo);
+    if (index != -1) {
+        printf("Found - Name: %s, Marks: %.2f\n\n", 
+               students[index].name, 
+               students[index].marks);
+        return;
     }
     
     printf("Not found!\n\n");
@@ -72,17 +146,21 @@ void deleteStudent() {
     int rollNo;
     printf("\n--- Delete Student ---\n");
     printf("Enter roll number to delete: ");
-    scanf("%d", &rollNo);
+    if (scanf("%d", &rollNo) != 1) {
+        printf("Invalid input.\n\n");
+        clearInputBuffer();
+        return;
+    }
+    clearInputBuffer();
     
-    for (int i = 0; i < studentCount; i++) {
-        if (students[i].rollNumber == rollNo) {
-            for (int j = i; j < studentCount - 1; j++) {
-                students[j] = students[j + 1];
-            }
-            studentCount--;
-            printf("Deleted successfully!\n\n");
-            return;
+    int index = findStudentByRoll(rollNo);
+    if (index != -1) {
+        for (int j = index; j < studentCount - 1; j++) {
+            students[j] = students[j + 1];
         }
+        studentCount--;
+        printf("Deleted successfully!\n\n");
+        return;
     }
     
     printf("Not found!\n\n");
@@ -93,16 +171,38 @@ void editStudent() {
     int rollNo;
     printf("\n--- Edit Student ---\n");
     printf("Enter roll number to edit: ");
-    scanf("%d", &rollNo);
+    if (scanf("%d", &rollNo) != 1) {
+        printf("Invalid input.\n\n");
+        clearInputBuffer();
+        return;
+    }
+    clearInputBuffer();
     
-    for (int i = 0; i < studentCount; i++) {
-        if (students[i].rollNumber == rollNo) {
-            printf("Current marks: %.2f\n", students[i].marks);
-            printf("Enter new marks: ");
-            scanf("%f", &students[i].marks);
-            printf("Updated successfully!\n\n");
-            return;
+    int index = findStudentByRoll(rollNo);
+    if (index != -1) {
+        printf("Current marks: %.2f\n", students[index].marks);
+        
+        // Input new marks with validation
+        float newMarks;
+        while (1) {
+            printf("Enter new marks (0-100): ");
+            if (scanf("%f", &newMarks) != 1) {
+                printf("Invalid input. Please enter a valid number.\n");
+                clearInputBuffer();
+                continue;
+            }
+            clearInputBuffer();
+            
+            if (newMarks < 0 || newMarks > 100) {
+                printf("Error: Marks must be between 0 and 100.\n");
+                continue;
+            }
+            break;
         }
+        
+        students[index].marks = newMarks;
+        printf("Updated successfully!\n\n");
+        return;
     }
     
     printf("Not found!\n\n");
@@ -179,7 +279,13 @@ int main() {
         printf("8. Exit\n");
         printf("========================================\n");
         printf("Enter choice (1-8): ");
-        scanf("%d", &choice);
+        
+        if (scanf("%d", &choice) != 1) {
+            printf("Invalid input! Please enter a number.\n\n");
+            clearInputBuffer();
+            continue;
+        }
+        clearInputBuffer();
         
         switch (choice) {
             case 1:
@@ -207,7 +313,7 @@ int main() {
                 printf("\nGoodbye!\n");
                 return 0;
             default:
-                printf("Invalid choice!\n\n");
+                printf("Invalid choice! Please enter 1-8.\n\n");
         }
     }
     
